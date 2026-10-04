@@ -1,0 +1,291 @@
+#!/usr/bin/env python3
+"""Apply clang-format and the OpenBSD KNF conventions it cannot express."""
+
+import argparse
+import os
+from pathlib import Path
+import re
+import subprocess
+
+
+PROTOTYPE = re.compile(
+	r"^(?P<type>(?:(?:static|extern)[ \t]+)?(?:const[ \t]+)?"
+	r"(?:struct[ \t]+\w+|enum[ \t]+\w+|\w+(?:[ \t]+(?:long|int|char))?)"
+	r"[ \t*]+)(?P<name>\w+)\((?P<args>[^;{}]*)\);",
+	re.MULTILINE,
+)
+LITERALS = re.compile(
+	r'/\*.*?\*/|//[^\n]*|"(?:\\.|[^"\\])*"|\'(?:\\.|[^\'\\])*\'',
+	re.DOTALL,
+)
+
+# Keep complete type specifiers together. Align declarators within each record.
+MEMBER = re.compile(
+	r"^(?P<indent>\t+)(?P<type>(?:(?:const|volatile)[ \t]+)*"
+	r"(?:struct[ \t]+\w+|union[ \t]+\w+|enum[ \t]+\w+|"
+	r"(?:(?:unsigned|signed)[ \t]+)?"
+	r"(?:long[ \t]+long(?:[ \t]+int)?|long[ \t]+double|"
+	r"(?:long|short)(?:[ \t]+int)?|int|char|double|float)|\w+)"
+	r"(?:[ \t]+(?:const|volatile))*)[ \t]+"
+	r"(?P<declaration>(?:\*|\(\*|\w)[^{}]*;.*)$"
+)
+
+
+def mask_literals(text):
+	"""Hide comments and strings without moving code or line boundaries."""
+	return LITERALS.sub(
+		lambda match: re.sub(r"[^\n]", " ", match[0]), text
+	)
+
+
+def prototype_type(match):
+	result_type = " ".join(match["type"].split())
+	stars = result_type[len(result_type.rstrip(" *")):].strip()
+	result_type = result_type.rstrip(" *")
+	return result_type, stars
+
+
+def split_arguments(arguments):
+	"""Split parameters without splitting nested function declarations."""
+	parts = []
+	depth = 0
+	start = 0
+	for index, char in enumerate(arguments):
+		if char in "([":
+			depth += 1
+		elif char in ")]":
+			depth -= 1
+		elif char == "," and depth == 0:
+			parts.append(arguments[start:index].strip())
+			start = index + 1
+	parts.append(arguments[start:].strip())
+	return parts
+
+
+def format_prototype(match, column):
+	result_type, stars = prototype_type(match)
+	head = result_type
+	end = column - len(stars)
+	while (len(head.expandtabs(8)) // 8 + 1) * 8 <= end:
+		head += "\t"
+	head += " " * (end - len(head.expandtabs(8)))
+	head += stars + match["name"] + "("
+	arguments = " ".join(match["args"].split())
+	if len((head + arguments + ");").expandtabs(8)) <= 80:
+		return head + arguments + ");"
+
+	parts = split_arguments(arguments)
+	lines = []
+	line = head
+	for index, part in enumerate(parts):
+		tail = ");" if index == len(parts) - 1 else ","
+		separator = "" if line == head or line == "\t" else " "
+		if len((line + separator + part + tail).expandtabs(8)) > 80:
+			lines.append(line.rstrip())
+			line = "\t"
+			separator = ""
+		line += separator + part + tail
+	lines.append(line)
+	return "\n".join(lines)
+
+
+def align_prototypes(text):
+	masked = mask_literals(text)
+	groups = []
+	for match in PROTOTYPE.finditer(text):
+		if masked[match.start()].isspace():
+			continue
+		previous_end = groups[-1][-1].end() if groups else None
+		if (previous_end is None or
+			text[previous_end:match.start()] != "\n"):
+			groups.append([])
+		groups[-1].append(match)
+	for group in reversed(groups):
+		column = max(
+			(len(kind) // 8 + 1) * 8 + len(stars)
+			for kind, stars in map(prototype_type, group)
+		)
+		for match in reversed(group):
+			replacement = format_prototype(match, column)
+			text = (text[:match.start()] + replacement +
+				text[match.end():])
+	return text
+
+
+def format_comment(match):
+	indent, body = match.groups()
+	if "\n" not in body:
+		return match[0]
+	lines = body.strip().splitlines()
+	lines = [re.sub(r"^\s*\* ?", "", line).strip() for line in lines]
+	return indent + "/*\n" + "\n".join(
+		indent + " *" + (" " + line if line else "") for line in lines
+	) + "\n" + indent + " */"
+
+
+def align_members(text):
+	lines = text.splitlines()
+	masked = mask_literals(text)
+	stack = []
+	groups = []
+	for index, code in enumerate(masked.splitlines()):
+		if stack and stack[-1] is not None and ";" in code:
+			match = MEMBER.fullmatch(lines[index])
+			line = lines[index]
+			open_comment = "/*" in line and "*/" not in line
+			if (match and not open_comment and
+				"{" not in code and "}" not in code):
+				stack[-1].append((index, match))
+		for token in re.finditer(r"[{}]", code):
+			if token[0] == "{":
+				is_record = re.search(
+					r"\b(?:struct|union)\s*(?:\w+\s*)?$",
+					code[:token.start()],
+				)
+				group = [] if is_record else None
+				stack.append(group)
+				if group is not None:
+					groups.append(group)
+			elif stack:
+				stack.pop()
+	for group in groups:
+		if not group:
+			continue
+		heads = [
+			match["indent"] + " ".join(match["type"].split())
+			for _, match in group
+		]
+		column = max(
+			(len(head.expandtabs(8)) // 8 + 1) * 8 for head in heads
+		)
+		for (index, match), head in zip(group, heads):
+			while len(head.expandtabs(8)) < column:
+				head += "\t"
+			line = head + match["declaration"]
+			if len(line.expandtabs(8)) > 80:
+				# Keep clang's wrapping on overflow.
+				kind = " ".join(match["type"].split())
+				line = (match["indent"] + kind + "\t" +
+					match["declaration"])
+			if len(line.expandtabs(8)) > 80 and "/*" in line:
+				declaration, note = line.split("/*", 1)
+				line = (
+					match["indent"] + "/*" + note + "\n" +
+					declaration.rstrip()
+				)
+			lines[index] = line
+	return "\n".join(lines) + "\n"
+
+
+def tab_indentation(text):
+	masked = mask_literals(text)
+	output = []
+	for line, code in zip(text.splitlines(), masked.splitlines()):
+		# Clang also pads some continuations for visual alignment. Keep
+		# code indentation in tabs, preserving block comment decoration.
+		if code.strip() or not line.lstrip().startswith("*"):
+			indent = re.match(r"[ \t]*", line)[0]
+			if " " in indent:
+				width = len(indent.expandtabs(8))
+				tabs = "\t" * max(1, width // 8)
+				line = tabs + line[len(indent):]
+		output.append(line)
+	return "\n".join(output) + "\n"
+
+
+def separate_returns(text):
+	text = re.sub(r"\n(?:[ \t]*\n)+(?=[ \t]*return\b)", "\n", text)
+	masked = mask_literals(text)
+	# Separate final returns and returns in blocks already divided into
+	# groups. Keep compact blocks with early returns together.
+	blocks = []
+	block_starts = []
+	parentheses = 0
+	separators = []
+	tokens = re.finditer(r"[{}();]|\b(?:return|case|default)\b", masked)
+	for token in tokens:
+		value = token[0]
+		if value == "(":
+			parentheses += 1
+		elif value == ")":
+			parentheses -= 1
+		elif value == "{":
+			blocks.append(0)
+			block_starts.append(token.end())
+		elif value == "}":
+			if blocks:
+				blocks.pop()
+				block_starts.pop()
+			if blocks:
+				blocks[-1] += 1
+		elif value in ("case", "default") and blocks:
+			blocks[-1] = 0
+			block_starts[-1] = token.end()
+		elif value == ";" and blocks and parentheses == 0:
+			blocks[-1] += 1
+		elif value == "return" and blocks:
+			start = masked.rfind("\n", 0, token.start()) + 1
+			indent = masked[start:token.start()]
+			if indent != "\t" * len(blocks):
+				continue
+			closing = r"return\b[^;]*;\s*\n" + indent[:-1] + r"}"
+			if not re.match(closing, masked[token.start():]):
+				continue
+			body = text[block_starts[-1]:start].strip()
+			grouped = re.search(
+				r"\n[ \t]*\n" + re.escape(indent) + r"\S", body
+			)
+			if blocks[-1] and (len(blocks) == 1 or grouped):
+				separators.append(start)
+	for start in reversed(separators):
+		text = text[:start] + "\n" + text[start:]
+	return text
+
+
+def knf(text):
+	text = align_prototypes(text)
+	text = re.sub(
+		r"^([ \t]*)/\*([\s\S]*?)\*/", format_comment, text,
+		flags=re.MULTILINE,
+	)
+	text = tab_indentation(text)
+	text = align_members(text)
+	return separate_returns(text)
+
+
+def main():
+	parser = argparse.ArgumentParser(description=__doc__)
+	parser.add_argument("--check", action="store_true")
+	parser.add_argument(
+		"--clang-format",
+		default=os.getenv("CLANG_FORMAT", "clang-format"),
+	)
+	parser.add_argument("files", nargs="+")
+	args = parser.parse_args()
+	failed = False
+	for filename in args.files:
+		path = Path(filename)
+		try:
+			formatted = subprocess.check_output(
+				[args.clang_format, "--style=file", str(path)],
+				text=True,
+			)
+		except (OSError, subprocess.CalledProcessError) as error:
+			parser.exit(1, str(error) + "\n")
+		formatted = knf(formatted)
+		if args.check:
+			if path.read_text() != formatted:
+				print(f"{path}: run make format")
+				failed = True
+		else:
+			path.write_text(formatted)
+		for number, line in enumerate(formatted.splitlines(), 1):
+			if len(line.expandtabs(8)) > 80:
+				print(f"{path}:{number}: "
+					"line exceeds 80 columns")
+				failed = True
+	return int(failed)
+
+
+if __name__ == "__main__":
+	raise SystemExit(main())

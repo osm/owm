@@ -1,0 +1,31 @@
+BasedOnStyle: LLVM
+IndentWidth: 8
+TabWidth: 8
+ContinuationIndentWidth: 8
+UseTab: Always
+ColumnLimit: 80
+AlignAfterOpenBracket: DontAlign
+AlignOperands: DontAlign
+AlignEscapedNewlines: Right
+BreakBeforeBraces: Linux
+BreakAfterReturnType: AllDefinitions
+AllowShortFunctionsOnASingleLine: None
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLoopsOnASingleLine: false
+AllowShortBlocksOnASingleLine: Never
+AllowShortEnumsOnASingleLine: false
+AllowShortCaseLabelsOnASingleLine: false
+IndentCaseLabels: false
+PointerAlignment: Right
+SpaceAfterCStyleCast: false
+SortIncludes: CaseSensitive
+IncludeBlocks: Regroup
+IncludeIsMainRegex: '$^'
+IncludeCategories:
+- {Regex: '^<sys/', Priority: 1}
+- {Regex: '^<(net/|netinet/|arpa/|linux/)', Priority: 2}
+- {Regex: '^<', Priority: 3}
+- {Regex: '^"', Priority: 4}
+SeparateDefinitionBlocks: Always
+MaxEmptyLinesToKeep: 1
+RemoveBracesLLVM: true

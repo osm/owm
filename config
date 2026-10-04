@@ -1,0 +1,85 @@
+# Appearance
+background_color = "#3e515b"
+font = "Liberation Mono:size=10"
+titlebar_height = 24
+taskbar_height = 34
+taskbar_hide_empty_desktops = true
+taskbar_hide_single_desktop = true
+
+# Desktops and window behavior
+desktops = 8
+move_step = 10
+resize_step = 10
+focus_follows_mouse = true
+
+# Window actions
+bind = "Super+m window_minimize"
+bind = "Super+Shift+m window_maximize"
+bind = "Super+w window_menu"
+
+# Focus
+bind = "Alt+Tab window_focus_next"
+bind = "Alt+Shift+Tab window_focus_prev"
+
+# Desktops
+bind = "Super+Left desktop_prev"
+bind = "Super+Right desktop_next"
+bind = "Super+1 desktop_switch 1"
+bind = "Super+2 desktop_switch 2"
+bind = "Super+3 desktop_switch 3"
+bind = "Super+4 desktop_switch 4"
+bind = "Super+5 desktop_switch 5"
+bind = "Super+6 desktop_switch 6"
+bind = "Super+7 desktop_switch 7"
+bind = "Super+8 desktop_switch 8"
+bind = "Super+Shift+1 window_send_to_desktop 1"
+bind = "Super+Shift+2 window_send_to_desktop 2"
+bind = "Super+Shift+3 window_send_to_desktop 3"
+bind = "Super+Shift+4 window_send_to_desktop 4"
+bind = "Super+Shift+5 window_send_to_desktop 5"
+bind = "Super+Shift+6 window_send_to_desktop 6"
+bind = "Super+Shift+7 window_send_to_desktop 7"
+bind = "Super+Shift+8 window_send_to_desktop 8"
+
+# Applications
+bind = "Super+p exec owm-run"
+bind = "Super+Shift+Return exec st -c terminal"
+bind = "Super+Shift+l exec slock"
+bind = "Super+x exec clear-clipboard"
+
+# Session
+bind = "Super+Shift+q session_save_exit"
+
+# Unused shortcuts
+# bind = "Super+F4 window_close"
+# bind = "Super+f window_fullscreen"
+# bind = "Super+r window_move_resize"
+# bind = "Super+Shift+Left window_send_prev"
+# bind = "Super+Shift+Right window_send_next"
+# bind = "Super+s session_save"
+# bind = "Super+Shift+r session_restart"
+# bind = "Super+Ctrl+Shift+q session_exit"
+
+# Disable a binding with none, for example:
+# bind = "Super+x none"
+
+# Desktop context menu
+clear_menu = true
+menu_item = "Run... | exec owm-run"
+menu_separator = true
+menu_item = "Save | session_save"
+menu_item = "Restart | session_restart"
+menu_separator = true
+menu_item = "Exit and save | session_save_exit"
+menu_item = "Exit without saving | session_exit"
+
+# Desktop icons: identifier | label | command | icon
+# Icons: application, terminal, battery, network, power, or an absolute image path.
+# An empty icon field uses application.
+desktop_icon = "terminal | Terminal | st -c terminal | terminal"
+desktop_icon = "chrome | Google Chrome | google-chrome --ozone-platform=x11 | /opt/google/chrome/product_logo_32.png"
+
+# Tray widgets
+tray_battery = true
+tray_wireguard = true
+tray_clock = true
