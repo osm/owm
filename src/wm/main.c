@@ -215,6 +215,7 @@ initialize(int restarting)
 	window_frame_init();
 	taskbar_init();
 	desktop_icons_init();
+	window_placement_load();
 
 	if (wm.config.restore_session && !restarting)
 		owm_session_load();
@@ -324,6 +325,7 @@ cleanup(void)
 	taskbar_free();
 	XDestroyWindow(wm.display, wm.support);
 	owm_session_free();
+	window_placement_free();
 	owm_config_bindings_free(&wm.config);
 	window_frame_free();
 	wm_draw_free();

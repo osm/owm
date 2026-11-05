@@ -29,6 +29,7 @@ void	test_desktop_submenu(void);
 void	test_sticky_window(void);
 void	test_hidden_desktops(void);
 void	test_keyboard_move(void);
+void	test_remember_position(void);
 void	test_fullscreen(void);
 void	test_maximize_transitions(void);
 void	test_icons(void);

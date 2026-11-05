@@ -60,7 +60,7 @@ format-check:
 	./scripts/format --check --clang-format "$(CLANG_FORMAT)" $(SOURCES)
 
 # Tests.
-UNIT_TESTS	 =	core config icon-positions ui-palette session-file \
+UNIT_TESTS	 =	core config icon-positions ui-palette session-file window-positions \
 			tray-widgets tray-wireguard wait
 TEST_PROGRAMS	 =	$(addprefix build/tests/,\
 			$(UNIT_TESTS) integration sdl-fullscreen)
@@ -102,6 +102,9 @@ build/tests/ui-palette: build/shared/ui-palette.o build/shared/ui-colors.o
 
 build/tests/session-file: build/wm/session-file.o build/shared/memory.o \
 	build/shared/settings.o build/shared/string-util.o
+
+build/tests/window-positions: build/wm/window-positions.o \
+	build/shared/memory.o build/shared/settings.o build/shared/string-util.o
 
 build/tests/tray-widgets: build/shared/builtin-icons.o build/shared/memory.o \
 	build/shared/paths.o build/shared/settings.o \

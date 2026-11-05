@@ -28,6 +28,7 @@ static const struct {
 	{"sticky-window", test_sticky_window},
 	{"hidden-desktops", test_hidden_desktops},
 	{"keyboard-move", test_keyboard_move},
+	{"remember-position", test_remember_position},
 	{"fullscreen", test_fullscreen},
 	{"maximize-transitions", test_maximize_transitions},
 	{"icons", test_icons},

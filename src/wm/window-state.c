@@ -326,7 +326,8 @@ restore_placement(struct client *c)
 	if (saved != NULL)
 		XFree(saved);
 	c->restore = c->g;
-	owm_session_match(c);
+	if (!owm_session_match(c) && !had_geometry && !wm.scanning)
+		window_placement_get(c, &c->g.x, &c->g.y);
 
 	if (c->order >= wm.next_order)
 		wm.next_order = c->order + 1;

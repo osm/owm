@@ -38,6 +38,8 @@ static Window target;
 static int opened, desktops_open;
 static struct menu_item window_items[] = {{"Resize/Move", "window_move_resize"},
 	{"Maximize", "window_maximize"}, {"Minimize", "window_minimize"},
+	{"Remember position", "window_remember_position"},
+	{"Forget position", "window_forget_position"},
 	{"Sticky", "window_sticky"}, {"Fullscreen", "window_fullscreen"},
 	{"Send to desktop", "desktops"}, {"", ""}, {"Close", "window_close"}};
 static struct menu_item desktop_items[MAX_DESKTOPS];
@@ -78,6 +80,16 @@ enabled(struct menu *m, int index)
 	struct client *c = NULL;
 
 	c = target ? window_client_find(target) : NULL;
+	if (target && m == &main_menu) {
+		int x, y;
+
+		if (strcmp(m->items[index].action,
+			"window_remember_position") == 0)
+			return window_placement_eligible(c);
+		if (strcmp(m->items[index].action, "window_forget_position") ==
+			0)
+			return window_placement_get(c, &x, &y);
+	}
 
 	return target == 0 ||
 		(c != NULL &&
@@ -448,12 +460,12 @@ owm_menu_open_window(struct client *c, int x, int y, Time time, int keyboard)
 	string_copy(window_items[1].label,
 		c->max_h || c->max_v ? "Restore" : "Maximize",
 		sizeof(window_items[1].label));
-	string_copy(window_items[4].label,
+	string_copy(window_items[6].label,
 		c->fullscreen ? "Leave fullscreen" : "Fullscreen",
-		sizeof(window_items[4].label));
-	string_copy(window_items[3].label,
+		sizeof(window_items[6].label));
+	string_copy(window_items[5].label,
 		desktop_for_client(c) == -1 ? "Unsticky" : "Sticky",
-		sizeof(window_items[3].label));
+		sizeof(window_items[5].label));
 	open_popup(x, y, time);
 	if (!opened || !keyboard)
 		return;
@@ -487,6 +499,19 @@ activate(struct menu *m, int index, Time time)
 		struct client *c = NULL;
 
 		c = window_client_find(target);
+
+		if (strcmp(action, "window_remember_position") == 0 ||
+			strcmp(action, "window_forget_position") == 0) {
+			if (!window_placement_save(c,
+				strcmp(action, "window_forget_position") ==
+					0)) {
+				m->failed = index;
+				draw(m);
+				return;
+			}
+			owm_menu_close();
+			return;
+		}
 
 		/* Release grabs before entering another modal action. */
 		owm_menu_close();

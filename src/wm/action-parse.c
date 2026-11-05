@@ -21,6 +21,8 @@ owm_action_parse(const char *text, int *desktop)
 		{"window_minimize", WINDOW_MINIMIZE},
 		{"window_menu", WINDOW_MENU},
 		{"window_move_resize", WINDOW_MOVE_RESIZE},
+		{"window_remember_position", WINDOW_REMEMBER_POSITION},
+		{"window_forget_position", WINDOW_FORGET_POSITION},
 		{"window_focus_next", WINDOW_FOCUS_NEXT},
 		{"window_focus_prev", WINDOW_FOCUS_PREV},
 		{"session_save", SESSION_SAVE},

@@ -135,6 +135,13 @@ void	window_client_close(struct client *, Time);
 int	window_client_is_task(const struct client *);
 void	window_client_cleanup(void);
 
+void	window_placement_load(void);
+void	window_placement_free(void);
+int	window_placement_eligible(const struct client *);
+/* Get a saved frame origin without changing live placement. */
+int	window_placement_get(const struct client *, int *, int *);
+int	window_placement_save(const struct client *, int);
+
 int			 desktop_work_height(void);
 void			 desktop_update_workarea(void);
 const struct client	*desktop_owner(const struct client *);

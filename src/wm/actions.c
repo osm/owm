@@ -27,6 +27,12 @@ owm_action_execute(const char *text, unsigned int modifiers, Time time)
 	case WINDOW_MOVE_RESIZE:
 		return window_move_begin(c, time);
 
+	case WINDOW_REMEMBER_POSITION:
+		return window_placement_save(c, 0);
+
+	case WINDOW_FORGET_POSITION:
+		return window_placement_save(c, 1);
+
 	case WINDOW_CLOSE:
 		if (c != NULL)
 			window_client_close(c, time);

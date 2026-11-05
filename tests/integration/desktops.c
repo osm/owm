@@ -482,8 +482,8 @@ test_desktop_submenu(void)
 			caption(app, CAPTION_MENU);
 			WAIT(named_popup("owm window menu"));
 			menu = attributes(named_popup("owm window menu"));
-			row = (menu.height - 13) / 7;
-			y = menu.y + 3 + 5 * row + row / 2;
+			row = (menu.height - 13) / 9;
+			y = menu.y + 3 + 7 * row + row / 2;
 
 			click(menu.x + menu.width / 2, y);
 			WAIT(named_popup("owm desktop submenu"));
@@ -541,7 +541,8 @@ open_desktop_submenu(void)
 	WAIT(named_popup("owm window menu"));
 	shortcut(XK_Home, 0);
 
-	for (i = 0; i < 5; i++)
+	/* Forget position is disabled until a position is saved. */
+	for (i = 0; i < 6; i++)
 		shortcut(XK_Down, 0);
 
 	shortcut(XK_Right, 0);
